@@ -9,8 +9,8 @@ import sys
 
 # parse arguments
 processopts = ['resize', 'opensfm', 'slam', 'cmvs', 'pmvs',
-               'odm_meshing', 'mvs_texturing', 'odm_georeferencing',
-               'odm_orthophoto']
+               'odm_meshing', 'odm_25dmeshing', 'mvs_texturing', 'odm_georeferencing',
+               'odm_dem', 'odm_orthophoto']
 
 with open(io.join_paths(context.root_path, 'VERSION')) as version_file:
     __version__ = version_file.read().strip()
@@ -52,6 +52,11 @@ def config():
                         default=2400,
                         type=int,
                         help='resizes images by the largest side')
+                        
+    parser.add_argument('--skip-resize',
+                       action='store_true',
+                       default=False,
+                       help='Skips resizing of images')
 
     parser.add_argument('--start-with', '-s',
                         metavar='<string>',
@@ -148,10 +153,15 @@ def config():
 
     parser.add_argument('--opensfm-processes',
                         metavar='<positive integer>',
-                        default=context.num_cores,
+                        default=1,
                         type=int,
                         help=('The maximum number of processes to use in dense '
                               'reconstruction. Default: %(default)s'))
+    
+    parser.add_argument('--use-25dmesh',
+                    action='store_true',
+                    default=False,
+                    help='Use a 2.5D mesh to compute the orthophoto. This option tends to provide better results for planar surfaces. Experimental.')
 
     parser.add_argument('--use-pmvs',
                         action='store_true',
@@ -246,6 +256,23 @@ def config():
                               'Increasing this value increases computation '
                               'times slightly but helps reduce memory usage. '
                               'Default: %(default)s'))
+    
+    parser.add_argument('--mesh-remove-outliers',
+                        metavar='<percent>',
+                        default=2,
+                        type=float,
+                        help=('Percentage of outliers to remove from the point set. Set to 0 to disable. '
+                              'Applies to 2.5D mesh only. '
+                              'Default: %(default)s'))
+
+    parser.add_argument('--mesh-wlop-iterations',
+                        metavar='<positive integer>',
+                        default=35,
+                        type=int,
+                        help=('Iterations of the Weighted Locally Optimal Projection (WLOP) simplification algorithm. '
+                              'Higher values take longer but produce a smoother mesh. '
+                              'Applies to 2.5D mesh only. '
+                              'Default: %(default)s'))
 
     parser.add_argument('--texturing-data-term',
                         metavar='<string>',
@@ -314,6 +341,87 @@ def config():
                         help=('Use this tag if you have a gcp_list.txt but '
                               'want to use the exif geotags instead'))
 
+    parser.add_argument('--dtm',
+                        action='store_true',
+                        default=False,
+                        help='Use this tag to build a DTM (Digital Terrain Model, ground only) using a progressive '
+                             'morphological filter. Check the --dem* parameters for fine tuning.')
+    
+    parser.add_argument('--dsm',
+                        action='store_true',
+                        default=False,
+                        help='Use this tag to build a DSM (Digital Surface Model, ground + objects) using a progressive '
+                             'morphological filter. Check the --dem* parameters for fine tuning.')
+
+    parser.add_argument('--dem-gapfill-steps',
+                        metavar='<positive integer>',
+                        default=4,
+                        type=int,
+                        help='Number of steps used to fill areas with gaps. Set to 0 to disable gap filling. '
+                             'Starting with a radius equal to the output resolution, N different DEMs are generated with '
+                             'progressively bigger radius using the inverse distance weighted (IDW) algorithm '
+                             'and merged together. Remaining gaps are then merged using nearest neighbor interpolation. '
+                             '\nDefault=%(default)s')
+
+    parser.add_argument('--dem-resolution',
+                        metavar='<float>',
+                        type=float,
+                        default=0.1,
+                        help='Length of raster cell edges in meters.'
+                             '\nDefault: %(default)s')
+
+    parser.add_argument('--dem-maxangle',
+                        metavar='<positive float>',
+                        type=float,
+                        default=20,
+                        help='Points that are more than maxangle degrees off-nadir are discarded. '
+                             '\nDefault: '
+                             '%(default)s')
+
+    parser.add_argument('--dem-maxsd',
+                        metavar='<positive float>',
+                        type=float,
+                        default=2.5,
+                        help='Points that deviate more than maxsd standard deviations from the local mean '
+                             'are discarded. \nDefault: '
+                             '%(default)s')
+
+    parser.add_argument('--dem-initial-distance',
+                        metavar='<positive float>',
+                        type=float,
+                        default=0.15,
+                        help='Used to classify ground vs non-ground points. Set this value to account for Z noise in meters. '
+                             'If you have an uncertainty of around 15 cm, set this value large enough to not exclude these points. '
+                             'Too small of a value will exclude valid ground points, while too large of a value will misclassify non-ground points for ground ones. '
+                             '\nDefault: '
+                             '%(default)s')
+
+    parser.add_argument('--dem-approximate',
+                        action='store_true',
+                        default=False,
+                        help='Use this tag use the approximate progressive  '
+                             'morphological filter, which computes DEMs faster '
+                             'but is not as accurate.')
+
+    parser.add_argument('--dem-decimation',
+                        metavar='<positive integer>',
+                        default=1,
+                        type=int,
+                        help='Decimate the points before generating the DEM. 1 is no decimation (full quality). '
+                             '100 decimates ~99%% of the points. Useful for speeding up '
+                             'generation.\nDefault=%(default)s')
+
+    parser.add_argument('--dem-terrain-type',
+                        metavar='<string>',
+                        choices=['FlatNonForest', 'FlatForest', 'ComplexNonForest', 'ComplexForest'],
+                        default='ComplexForest',
+                        help='One of: %(choices)s. Specifies the type of terrain. This mainly helps reduce processing time. '
+                             '\nFlatNonForest: Relatively flat region with little to no vegetation'
+                             '\nFlatForest: Relatively flat region that is forested'
+                             '\nComplexNonForest: Varied terrain with little to no vegetation'
+                             '\nComplexForest: Varied terrain that is forested'
+                             '\nDefault=%(default)s')
+
     parser.add_argument('--orthophoto-resolution',
                         metavar='<float > 0.0>',
                         default=20.0,
@@ -343,6 +451,21 @@ def config():
                         help='Set the compression to use. Note that this could '
                              'break gdal_translate if you don\'t know what you '
                              'are doing. Options: %(choices)s.\nDefault: %(default)s')
+
+    parser.add_argument('--orthophoto-bigtiff',
+                        type=str,
+                        choices=['YES', 'NO','IF_NEEDED','IF_SAFER'],
+                        default='IF_SAFER',
+                        help='Control whether the created orthophoto is a BigTIFF or '
+                             'classic TIFF. BigTIFF is a variant for files larger than '
+                             '4GiB of data. Options are %(choices)s. See GDAL specs: '
+                             'https://www.gdal.org/frmt_gtiff.html for more info. '
+                             '\nDefault: %(default)s')
+
+    parser.add_argument('--build-overviews',
+                        action='store_true',
+                        default=False,
+                        help='Build orthophoto overviews using gdaladdo.')
 
     parser.add_argument('--zip-results',
                         action='store_true',

@@ -91,6 +91,19 @@ SETUP_EXTERNAL_PROJECT(Ceres ${ODM_Ceres_Version} ${ODM_BUILD_Ceres})
 
 
 # ---------------------------------------------------------------------------------------------
+# CGAL
+#
+set(ODM_CGAL_Version 4.9)
+option(ODM_BUILD_CGAL "Force to build CGAL library" OFF)
+
+SETUP_EXTERNAL_PROJECT(CGAL ${ODM_CGAL_Version} ${ODM_BUILD_CGAL})
+
+# ---------------------------------------------------------------------------------------------
+# Hexer
+#
+SETUP_EXTERNAL_PROJECT(Hexer 1.4 ON)
+
+# ---------------------------------------------------------------------------------------------
 # Open Geometric Vision (OpenGV)
 # Open Structure from Motion (OpenSfM)
 # Clustering Views for Multi-view Stereo (CMVS)
@@ -105,6 +118,7 @@ set(custom_libs OpenGV
 				Ecto
 				PDAL
 				MvsTexturing
+				Lidar2dems
 )
 
 # Dependencies of the SLAM module
