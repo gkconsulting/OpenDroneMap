@@ -279,8 +279,6 @@ void Georef::parseArguments(int argc, char *argv[])
     logFile_ = std::string(argv[0]) + "_log.txt";
     log_ << logFile_ << "\n";
     
-    finalTransformFile_ = std::string(argv[0]) + "_transform.txt";
-    
     // If no arguments were passed, print help.
     if (argc == 1)
     {
@@ -321,21 +319,6 @@ void Georef::parseArguments(int argc, char *argv[])
                 throw GeorefException("Argument '" + argument + "' has a bad value.");
             }
             log_ << "Log file path was set to: " << logFile_ << "\n";
-        }
-        else if (argument == "-outputTransformFile")
-        {
-            ++argIndex;
-            if (argIndex >= argc)
-            {
-                throw GeorefException("Missing argument for '" + argument + "'.");
-            }
-            finalTransformFile_ = std::string(argv[argIndex]);
-            std::ofstream testFile(logFile_.c_str());
-            if (!testFile.is_open())
-            {
-                throw GeorefException("Argument '" + argument + "' has a bad value.");
-            }
-            log_ << "Transform file path was set to: " << finalTransformFile_ << "\n";
         }
         else if(argument == "-bundleFile" && argIndex < argc)
         {
@@ -894,10 +877,8 @@ void Georef::performGeoreferencingWithGCP()
                              gcps_[gcp0].getReferencedPos(), gcps_[gcp1].getReferencedPos(), gcps_[gcp2].getReferencedPos());
     log_ << "Final transform:\n";
     log_ << transFinal.transform_ << '\n';
-    
-    printFinalTransform(transFinal.transform_);
 
-    // The transform used to transform model into the georeferenced system.
+    // The tranform used to transform model into the georeferenced system.
     Eigen::Transform<float, 3, Eigen::Affine> transform;
 
     transform(0, 0) = static_cast<float>(transFinal.transform_.r1c1_);
@@ -1075,9 +1056,7 @@ void Georef::createGeoreferencedModelFromExifData()
     log_ << "Final transform:\n";
     log_ << transFinal.transform_ << '\n';
     
-    printFinalTransform(transFinal.transform_);
-    
-    // The transform used to move the chosen area into the ortho photo.
+    // The tranform used to move the chosen area into the ortho photo.
     Eigen::Transform<float, 3, Eigen::Affine> transform;
     
     transform(0, 0) = static_cast<float>(transFinal.transform_.r1c1_);    transform(1, 0) = static_cast<float>(transFinal.transform_.r2c1_);
@@ -1329,30 +1308,6 @@ void Georef::printGeorefSystem()
     geoStream << georefSystem_ << std::endl;
     geoStream.close();
     log_ << "... georeference system saved.\n";
-}
-
-
-void Georef::printFinalTransform(Mat4 transform)
-{
-    if(outputObjFilename_.empty())
-    {
-        throw GeorefException("Output file path empty!.");
-    }
-    
-    std::string tmp = outputObjFilename_;
-    size_t findPos = tmp.find_last_of(".");
-    
-    if(std::string::npos == findPos)
-    {
-        throw GeorefException("Tried to generate default ouptut file, could not find .obj in the output file:\n\'"+outputObjFilename_+"\'");
-    }
-    
-    log_ << '\n';
-    log_ << "Saving final transform file to \'" << finalTransformFile_ << "\'...\n";
-    std::ofstream transformStream(finalTransformFile_.c_str());
-    transformStream << transform << std::endl;
-    transformStream.close();
-    log_ << "... final transform saved.\n";
 }
 
 

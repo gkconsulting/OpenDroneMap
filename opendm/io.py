@@ -1,5 +1,4 @@
 import os
-import shutil, errno
 
 
 def get_files_list(path_dir):
@@ -31,12 +30,3 @@ def file_exists(path_file):
 
 def dir_exists(dirname):
     return os.path.isdir(dirname)
-
-
-def copy(src, dst):
-    try: 
-        shutil.copytree(src, dst)
-    except OSError as e:
-        if e.errno == errno.ENOTDIR:
-            shutil.copy(src, dst)
-        else: raise

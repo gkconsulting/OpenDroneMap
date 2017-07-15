@@ -2,7 +2,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <cstring>
 #include <iomanip>
 #include <vector>
 #include <cstdlib>
@@ -282,11 +281,10 @@ bool UtmExtractor::parsePosition(std::ifstream &jheadStream, double &lon, double
   std::string latStr, lonStr, altStr;
   while (std::getline(jheadStream, str))
   {
-    const char* latitudeTag = "GPS Latitude : ";
-    size_t index = str.find(latitudeTag);
+    size_t index = str.find("GPS Latitude : ");
     if (index != std::string::npos)
     {
-        latStr = str.substr(index + std::strlen(latitudeTag));
+        latStr = str.substr(index + 15);
         size_t find = latStr.find_first_of("0123456789");
         if(std::string::npos == find)
         {
@@ -294,28 +292,24 @@ bool UtmExtractor::parsePosition(std::ifstream &jheadStream, double &lon, double
         }
 
     }
-
-    const char* longitudeTag = "GPS Longitude: ";
-    index = str.find(longitudeTag);
+    index = str.find("GPS Longitude: ");
     if (index != std::string::npos)
     {
-        lonStr = str.substr(index + std::strlen(longitudeTag));
+        lonStr = str.substr(index + 15);
         size_t find = lonStr.find_first_of("0123456789");
         if(std::string::npos == find)
         {
-            throw UtmExtractorException("Image is missing GPS Longitude data");
+            throw UtmExtractorException("Image is missing GPS Latitude data");
         }
     }
-
-    const char* altitudeTag = "GPS Altitude :";
-    index = str.find(altitudeTag);
+    index = str.find("GPSAltitude");
     if (index != std::string::npos)
     {
-       altStr = str.substr(index + std::strlen(altitudeTag));
+       altStr = str.substr(index + 12);
        size_t find = altStr.find_first_of("0123456789");
        if(std::string::npos == find)
        {
-           throw UtmExtractorException("Image is missing GPS Altitude data");
+           throw UtmExtractorException("Image is missing GPS Latitude data");
        }
     }
   }
@@ -341,10 +335,21 @@ bool UtmExtractor::parsePosition(std::ifstream &jheadStream, double &lon, double
 
   if (!altStr.empty())
   {
-    char meterUnitChar;
-    istr.clear();
-    istr.str(altStr);
-    istr >> alt >> meterUnitChar;
+      size_t index = altStr.find_last_of("=");
+      if (index != std::string::npos)
+      {
+          altStr = altStr.substr(index + 1);
+          istr.clear();
+          istr.str(altStr);
+          
+          char dummyChar;
+          int nominator, denominator;
+          istr >> nominator;
+          istr >> dummyChar;
+          istr >> denominator;
+          
+          alt = static_cast<double>(nominator)/static_cast<double>(denominator);
+      }
   }
 
   return true;
