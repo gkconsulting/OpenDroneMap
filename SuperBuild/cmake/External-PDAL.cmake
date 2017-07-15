@@ -2,14 +2,13 @@ set(_proj_name pdal)
 set(_SB_BINARY_DIR "${SB_BINARY_DIR}/${_proj_name}")
 
 ExternalProject_Add(${_proj_name}
-  DEPENDS           hexer
   PREFIX            ${_SB_BINARY_DIR}
   TMP_DIR           ${_SB_BINARY_DIR}/tmp
   STAMP_DIR         ${_SB_BINARY_DIR}/stamp
   #--Download step--------------
   DOWNLOAD_DIR      ${SB_DOWNLOAD_DIR}
-  URL               https://github.com/PDAL/PDAL/archive/e881b581e3b91a928105d67db44c567f3b6d1afe.tar.gz
-  URL_MD5           438acbb736ba01fbe8f9ca7cdbf113bf
+  URL               https://github.com/PDAL/PDAL/archive/1.4.0.tar.gz 
+  URL_MD5           e55c17902d3ed6364454c9d1ad62ff43 
   #--Update/Patch step----------
   UPDATE_COMMAND    ""
   #--Configure step-------------
@@ -20,7 +19,7 @@ ExternalProject_Add(${_proj_name}
     -BUILD_PLUGIN_PGPOINTCLOUD=ON
     -DBUILD_PLUGIN_CPD=OFF
 	-DBUILD_PLUGIN_GREYHOUND=OFF
-	-DBUILD_PLUGIN_HEXBIN=ON
+	-DBUILD_PLUGIN_HEXBIN=OFF
 	-DBUILD_PLUGIN_ICEBRIDGE=OFF
 	-DBUILD_PLUGIN_MRSID=OFF
 	-DBUILD_PLUGIN_NITF=OFF

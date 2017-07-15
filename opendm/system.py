@@ -17,16 +17,10 @@ def get_ccd_widths():
     return dict(zip(map(string.lower, sensor_data.keys()), sensor_data.values()))
 
 
-def run(cmd, env_paths=[]):
+def run(cmd):
     """Run a system command"""
     log.ODM_DEBUG('running %s' % cmd)
-
-    env = None
-    if len(env_paths) > 0:
-        env = os.environ.copy()
-        env["PATH"] = env["PATH"] + ":" + ":".join(env_paths)
-
-    retcode = subprocess.call(cmd, shell=True, env=env)
+    retcode = subprocess.call(cmd, shell=True)
 
     if retcode < 0:
         raise Exception("Child was terminated by signal {}".format(-retcode))
